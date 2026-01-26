@@ -12,12 +12,372 @@ body {
   background: rgb(var(--background-rgb));
   font-size: 18px;
   line-height: 1.6;
+  overflow-x: hidden;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Ensure fixed elements are not clipped */
+html {
+  position: relative;
+  overflow-x: hidden;
 }
 
 /* High contrast for accessibility */
 * {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Disable all dashboard interactions during onboarding */
+.onboarding-mode * {
+  pointer-events: none !important;
+}
+
+/* EXCEPT the AI Assistant */
+.onboarding-mode .ai-assistant-widget {
+  pointer-events: auto !important;
+}
+
+.onboarding-mode .ai-assistant-widget * {
+  pointer-events: auto !important;
+}
+
+/* EXCEPT onboarding buttons */
+.onboarding-mode .onboarding-button {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* EXCEPT modals (they need to be closable) */
+.onboarding-mode [role="dialog"],
+.onboarding-mode .modal,
+.onboarding-mode .account-modal,
+.onboarding-mode .investment-modal {
+  pointer-events: auto !important;
+}
+
+.onboarding-mode [role="dialog"] *,
+.onboarding-mode .modal *,
+.onboarding-mode .account-modal *,
+.onboarding-mode .investment-modal * {
+  pointer-events: auto !important;
+}
+
+/* Onboarding overlay (darkens background) */
+.onboarding-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 998; /* Below highlights and modals */
+  pointer-events: none;
+}
+
+/* Onboarding highlighting - BELOW modals */
+.onboarding-highlight {
+  position: relative;
+  z-index: 999; /* BELOW modals, above overlay */
+  box-shadow: 0 0 0 4px #3b82f6, 0 0 0 8px rgba(59, 130, 246, 0.3);
+  animation: pulse 2s infinite;
+  border-radius: 0.75rem;
+}
+
+/* Modals - ABOVE highlighted cards - NO ANIMATIONS/TRANSITIONS - INSTANT RENDERING */
+.account-modal,
+.portfolio-modal,
+[role="dialog"] {
+  z-index: 1001 !important; /* ABOVE highlighted cards */
+  animation: none !important;
+  transition: none !important;
+  will-change: contents;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  /* Simple shadow for performance - no complex shadows */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  filter: none !important;
+}
+
+.account-modal *,
+.portfolio-modal *,
+[role="dialog"] * {
+  animation: none !important;
+  transition: none !important;
+}
+
+.modal-backdrop {
+  z-index: 1000 !important; /* Below modals, above highlights */
+  animation: none !important;
+  transition: none !important;
+  display: block !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  /* Simple background - no blur or filters for performance */
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  filter: none !important;
+}
+
+/* AI Assistant widget - ALWAYS on top and visible */
+.ai-assistant-widget {
+  position: fixed !important;
+  z-index: 1002 !important; /* Chat widget ALWAYS highest */
+  display: block !important;
+  visibility: visible !important;
+}
+
+.ai-assistant-widget.minimized {
+  width: 64px;
+  height: 64px;
+  bottom: 24px;
+  right: 24px;
+}
+
+.ai-assistant-widget.open {
+  width: 400px;
+  height: 550px;
+  bottom: 24px;
+  right: 24px;
+}
+
+.ai-assistant-widget.onboarding-active {
+  /* Subtle highlight to show it's active, but not as prominent as highlighted elements */
+  box-shadow: 0 0 0 2px #3b82f6, 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 4px #3b82f6, 0 0 0 8px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 4px #3b82f6, 0 0 0 12px rgba(59, 130, 246, 0.5);
+  }
+}
+
+/* Full-screen task transition */
+.task-transition-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.5s ease-in;
+}
+
+.task-transition-fullscreen.exiting {
+  animation: fadeOut 0.5s ease-out forwards;
+}
+
+.transition-content {
+  text-align: center;
+  color: white;
+  max-width: 600px;
+  padding: 40px;
+}
+
+.checkmark-large {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 32px;
+}
+
+.checkmark-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.checkmark-circle {
+  stroke: white;
+  stroke-width: 2;
+  stroke-miterlimit: 10;
+  fill: none;
+  animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.checkmark-check {
+  stroke: white;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-miterlimit: 10;
+  fill: none;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.6s forwards;
+}
+
+.task-complete-title {
+  font-size: 48px;
+  font-weight: bold;
+  margin-bottom: 32px;
+}
+
+.survey-instructions {
+  font-size: 20px;
+  margin-bottom: 48px;
+  opacity: 0.95;
+}
+
+.survey-instructions p {
+  white-space: pre-line;
+}
+
+.ready-section p {
+  font-size: 18px;
+  margin-bottom: 24px;
+}
+
+.start-next-button {
+  background: white;
+  color: #3b82f6;
+  border: none;
+  padding: 20px 48px;
+  font-size: 20px;
+  font-weight: bold;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.start-next-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes stroke {
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Start Study Transition */
+.task-transition-fullscreen.start-study {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.study-icon {
+  font-size: 72px;
+  margin-bottom: 24px;
+}
+
+.start-study-title {
+  font-size: 48px;
+  font-weight: bold;
+  color: white;
+  margin-bottom: 24px;
+}
+
+.instructions {
+  font-size: 24px;
+  color: white;
+  margin-bottom: 32px;
+}
+
+.reminder {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.8;
+  margin-bottom: 48px;
+}
+
+.start-button {
+  background: white;
+  color: #667eea;
+  border: none;
+  padding: 20px 48px;
+  font-size: 20px;
+  font-weight: bold;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto !important;
+}
+
+.start-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.start-button:active {
+  transform: scale(0.98);
+}
+
+/* Action Buttons Demo for Onboarding */
+.action-buttons-demo {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.action-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+
+.action-button {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 8px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.action-button:last-child {
+  margin-bottom: 0;
+}
+
+.action-button.keep {
+  background: #10b981;
+  color: white;
+}
+
+.action-button.cancel {
+  background: #ef4444;
+  color: white;
+}
+
+/* Make buttons non-functional during demo */
+.action-buttons-demo .action-button:disabled {
+  pointer-events: none;
+  opacity: 0.9;
+  cursor: not-allowed;
 }
 
 

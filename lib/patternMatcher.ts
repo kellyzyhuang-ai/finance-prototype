@@ -39,11 +39,14 @@ const PATTERNS: Record<IntentType, string[]> = {
   confirm_yes: [
     'yes', 'confirm', 'correct', 'right', 'yeah', 'yep', 
     'sure', 'ok', 'okay', 'y', 'sounds good', 'that works',
-    'go ahead', 'proceed', 'do it'
+    'go ahead', 'proceed', 'do it', 'yes confirm', 'approve',
+    'keep', 'keep it', 'keep scheduled', 'keep this', 'keep the action'
   ],
   confirm_no: [
     'no', 'back', 'cancel', 'wrong', 'nope', 'n', 
-    'go back', 'change', 'not that', 'different', 'stop'
+    'go back', 'change', 'not that', 'different', 'stop',
+    'cancel it', 'cancel this', 'cancel the action', 'decline',
+    'nevermind', 'never mind', 'don\'t', "don't", 'dont'
   ],
   unclear: [],
   question: [
@@ -117,18 +120,59 @@ function isOffTopic(input: string, allMatches: IntentMatch[]): boolean {
 }
 
 /**
- * Match user input to intent patterns
+ * Get valid intents for a given scenario
  */
-export function matchIntent(input: string): IntentMatch {
+function getValidIntentsForScenario(
+  taskType: 'bill' | 'savings' | 'investment' | null,
+  autonomyLevel: 'low' | 'medium' | 'high'
+): IntentType[] {
+  if (autonomyLevel === 'high') {
+    // High autonomy: only confirm_yes and confirm_no are valid
+    return ['confirm_yes', 'confirm_no']
+  } else if (autonomyLevel === 'medium') {
+    // Medium autonomy: only confirm_yes and confirm_no are valid
+    return ['confirm_yes', 'confirm_no']
+  } else {
+    // Low autonomy: option1, option2, option3, confirm_yes, confirm_no
+    return ['option1', 'option2', 'option3', 'confirm_yes', 'confirm_no']
+  }
+}
+
+/**
+ * Check if an intent is valid for the current scenario
+ */
+function isValidIntentForScenario(
+  intent: IntentType,
+  taskType: 'bill' | 'savings' | 'investment' | null,
+  autonomyLevel: 'low' | 'medium' | 'high'
+): boolean {
+  const validIntents = getValidIntentsForScenario(taskType, autonomyLevel)
+  return validIntents.includes(intent)
+}
+
+/**
+ * Match user input to intent patterns (context-aware)
+ */
+export function matchIntent(
+  input: string,
+  taskType?: 'bill' | 'savings' | 'investment' | null,
+  autonomyLevel?: 'low' | 'medium' | 'high'
+): IntentMatch {
   const normalizedInput = input.trim().toLowerCase()
   
   if (!normalizedInput) {
     return { intent: 'unclear', confidence: 0 }
   }
 
-  // Check for exact matches first (highest confidence)
+  // Get valid intents for current scenario
+  const validIntents = taskType && autonomyLevel 
+    ? getValidIntentsForScenario(taskType, autonomyLevel)
+    : ['option1', 'option2', 'option3', 'confirm_yes', 'confirm_no'] // Default to low autonomy
+
+  // Check for exact matches first (highest confidence) - only for valid intents
   for (const [intent, patterns] of Object.entries(PATTERNS)) {
     if (intent === 'unclear' || intent === 'question' || intent === 'off_topic') continue
+    if (taskType && autonomyLevel && !validIntents.includes(intent as IntentType)) continue
     
     for (const pattern of patterns) {
       if (normalizedInput === pattern.toLowerCase()) {
@@ -141,9 +185,10 @@ export function matchIntent(input: string): IntentMatch {
     }
   }
 
-  // Check for substring matches
+  // Check for substring matches - only for valid intents
   for (const [intent, patterns] of Object.entries(PATTERNS)) {
     if (intent === 'unclear' || intent === 'question' || intent === 'off_topic') continue
+    if (taskType && autonomyLevel && !validIntents.includes(intent as IntentType)) continue
     
     for (const pattern of patterns) {
       if (normalizedInput.includes(pattern.toLowerCase()) || 
@@ -157,12 +202,13 @@ export function matchIntent(input: string): IntentMatch {
     }
   }
 
-  // Fuzzy matching with Levenshtein distance
+  // Fuzzy matching with Levenshtein distance - only for valid intents
   const fuzzyMatches: IntentMatch[] = []
   const SIMILARITY_THRESHOLD = 0.7
 
   for (const [intent, patterns] of Object.entries(PATTERNS)) {
     if (intent === 'unclear' || intent === 'question' || intent === 'off_topic') continue
+    if (taskType && autonomyLevel && !validIntents.includes(intent as IntentType)) continue
     
     for (const pattern of patterns) {
       const similarity = calculateSimilarity(normalizedInput, pattern)
@@ -187,27 +233,54 @@ export function matchIntent(input: string): IntentMatch {
     return { intent: 'question', confidence: 0.8 }
   }
 
-  // No match found
+  // No match found - return unclear
   return { intent: 'unclear', confidence: 0 }
 }
 
 /**
- * Get clarification message based on context
+ * Get clarification message based on context (scenario-specific)
  */
 export function getClarificationMessage(
   autonomyLevel: 'low' | 'medium' | 'high',
-  intent: IntentType
+  intent: IntentType,
+  taskType?: 'bill' | 'savings' | 'investment' | null
 ): string {
-  if (intent === 'question' && autonomyLevel === 'low') {
-    return "I'm here to provide information, but this decision is yours to make. Here are your options again:\n\n• Option 1: Pay $150 now\n• Option 2: Set up payment plan\n• Option 3: Skip for now\n\nYou can click a button above or type your choice."
+  // High autonomy - only keep/cancel options
+  if (autonomyLevel === 'high') {
+    if (intent === 'question') {
+      return "I'm here to help, but this decision is yours. You can:\n\n• Keep this action (it will proceed as planned)\n• Cancel this action (it will be cancelled)\n\nPlease select one of the options above."
+    }
+    return "I didn't understand that. Please select one of the options above:\n\n• Keep this action\n• Cancel this action"
   }
 
-  if (intent === 'off_topic') {
-    return "Let's focus on your electric bill that's due tomorrow. Which option would you like to choose?"
+  // Medium autonomy - only approve/decline options
+  if (autonomyLevel === 'medium') {
+    if (intent === 'question') {
+      return "I'm here to help, but this decision is yours. You can:\n\n• Approve this recommendation\n• Decline this recommendation\n\nPlease select one of the options above."
+    }
+    return "I didn't understand that. Please select one of the options above:\n\n• Approve this recommendation\n• Decline this recommendation"
   }
 
-  // Default clarification
-  return "I want to make sure I understand you correctly. Which option would you like to choose?\n\n• Option 1: Pay $150 now\n• Option 2: Set up payment plan\n• Option 3: Skip for now\n\nYou can click a button above or type your choice."
+  // Low autonomy - task-specific options
+  if (taskType === 'bill') {
+    if (intent === 'question') {
+      return "I'm here to provide information, but this decision is yours to make. Here are your options again:\n\n• Option 1: Pay $150 now\n• Option 2: Set up payment plan\n• Option 3: Skip for now\n\nYou can click a button above or type your choice."
+    }
+    return "I didn't understand that. Please select one of the options above:\n\n• Option 1: Pay $150 now\n• Option 2: Set up payment plan\n• Option 3: Skip for now\n\nYou can click a button above or type your choice."
+  } else if (taskType === 'savings') {
+    if (intent === 'question') {
+      return "I'm here to provide information, but this decision is yours to make. Here are your options again:\n\n• Option 1: Transfer $500 to savings\n• Option 2: Transfer a different amount\n• Option 3: Skip for now\n\nYou can click a button above or type your choice."
+    }
+    return "I didn't understand that. Please select one of the options above:\n\n• Option 1: Transfer $500 to savings\n• Option 2: Transfer a different amount\n• Option 3: Skip for now\n\nYou can click a button above or type your choice."
+  } else if (taskType === 'investment') {
+    if (intent === 'question') {
+      return "I'm here to provide information, but this decision is yours to make. Here are your options again:\n\n• Option 1: Rebalance now to target allocation\n• Option 2: Rebalance partially\n• Option 3: Keep current allocation\n\nYou can click a button above or type your choice."
+    }
+    return "I didn't understand that. Please select one of the options above:\n\n• Option 1: Rebalance now to target allocation\n• Option 2: Rebalance partially\n• Option 3: Keep current allocation\n\nYou can click a button above or type your choice."
+  }
+
+  // Default fallback
+  return "I didn't understand that. Please select one of the options above, or type your choice more clearly."
 }
 
 

@@ -11,6 +11,14 @@ export interface TrialData {
   decisionLatencyMs: number
   finalDecision: string
   infoRequestCount: number
+  inputMethod?: 'click' | 'typed'
+  typedInput?: string
+  // Payment plan fields (for bill payment tasks)
+  paymentPlanAmount?: number | null
+  paymentPlanPayments?: number | null
+  paymentPlanFrequency?: string | null
+  // Custom transfer amount (for savings transfer tasks)
+  customTransferAmount?: number | null
   // Survey responses
   trust_1: number | null
   trust_2: number | null
@@ -92,6 +100,8 @@ class StudyDataManager {
       decisionLatencyMs: trial.decisionLatencyMs || 0,
       finalDecision: trial.finalDecision || '',
       infoRequestCount: trial.infoRequestCount || 0,
+      inputMethod: trial.inputMethod,
+      typedInput: trial.typedInput,
       trust_1: null,
       trust_2: null,
       trust_3: null,
@@ -160,60 +170,6 @@ class StudyDataManager {
     return this.data.trials.length - 1
   }
 
-  exportBaselineCSV(): string {
-    if (!this.data.baselineSurvey) {
-      return ''
-    }
-
-    const data = this.data.baselineSurvey
-    const headers = [
-      'participantId',
-      'group',
-      'timestamp',
-      'age',
-      'gender',
-      'education',
-      'priorFinancialApps',
-      'priorAppsUsed',
-      'trustPropensity_1',
-      'trustPropensity_2',
-      'trustPropensity_3',
-      'trustPropensity_4',
-      'trustPropensityMean',
-      'digitalLiteracy',
-      'financialLiteracy_1',
-      'financialLiteracy_2',
-      'financialLiteracy_3',
-      'financialLiteracyScore',
-    ]
-
-    const row = [
-      data.participantId,
-      data.group.toString(),
-      data.timestamp,
-      data.age.toString(),
-      data.gender,
-      data.education,
-      data.priorFinancialApps ? 'yes' : 'no',
-      data.priorAppsUsed || '',
-      data.trustPropensity_1.toString(),
-      data.trustPropensity_2.toString(),
-      data.trustPropensity_3.toString(),
-      data.trustPropensity_4.toString(),
-      data.trustPropensityMean.toFixed(2),
-      data.digitalLiteracy.toString(),
-      data.financialLiteracy_1 ? 'true' : 'false',
-      data.financialLiteracy_2 ? 'true' : 'false',
-      data.financialLiteracy_3 ? 'true' : 'false',
-      data.financialLiteracyScore.toString(),
-    ]
-
-    const csvContent = [headers, row]
-      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n')
-
-    return csvContent
-  }
 
   exportTrialsCSV(): string {
     if (this.data.trials.length === 0) {
@@ -231,24 +187,13 @@ class StudyDataManager {
       'taskDurationMs',
       'decisionLatencyMs',
       'finalDecision',
+      'inputMethod',
+      'typedInput',
       'infoRequestCount',
-      'trust_1',
-      'trust_2',
-      'trust_3',
-      'trust_4',
-      'trust_5',
-      'trust_6',
-      'trust_7',
-      'trustMean',
-      'control_1',
-      'control_2',
-      'control_3',
-      'control_4',
-      'control_5',
-      'controlMean',
-      'manipCheck_1',
-      'manipCheck_2',
-      'manipCheck_3',
+      'paymentPlanAmount',
+      'paymentPlanPayments',
+      'paymentPlanFrequency',
+      'customTransferAmount',
     ]
 
     const rows = this.data.trials.map((trial) => [
@@ -262,24 +207,13 @@ class StudyDataManager {
       trial.taskDurationMs.toString(),
       trial.decisionLatencyMs.toString(),
       trial.finalDecision,
+      trial.inputMethod || '',
+      trial.typedInput || '',
       trial.infoRequestCount.toString(),
-      trial.trust_1?.toString() || '',
-      trial.trust_2?.toString() || '',
-      trial.trust_3?.toString() || '',
-      trial.trust_4?.toString() || '',
-      trial.trust_5?.toString() || '',
-      trial.trust_6?.toString() || '',
-      trial.trust_7?.toString() || '',
-      trial.trustMean?.toFixed(2) || '',
-      trial.control_1?.toString() || '',
-      trial.control_2?.toString() || '',
-      trial.control_3?.toString() || '',
-      trial.control_4?.toString() || '',
-      trial.control_5?.toString() || '',
-      trial.controlMean?.toFixed(2) || '',
-      trial.manipCheck_1?.toString() || '',
-      trial.manipCheck_2?.toString() || '',
-      trial.manipCheck_3?.toString() || '',
+      trial.paymentPlanAmount?.toString() || '',
+      trial.paymentPlanPayments?.toString() || '',
+      trial.paymentPlanFrequency || '',
+      trial.customTransferAmount?.toString() || '',
     ])
 
     const csvContent = [headers, ...rows]
@@ -289,23 +223,6 @@ class StudyDataManager {
     return csvContent
   }
 
-  downloadBaselineCSV() {
-    const csv = this.exportBaselineCSV()
-    if (!csv) {
-      alert('No baseline data to export')
-      return
-    }
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `${this.data.participantId}_baseline.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
 
   downloadTrialsCSV() {
     const csv = this.exportTrialsCSV()

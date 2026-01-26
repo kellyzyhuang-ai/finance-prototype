@@ -68,7 +68,7 @@ const SCRIPTED_MESSAGES: Record<TaskType, Record<string, Record<string, string[]
       high: [
         "I've analyzed your account and processed the payment for your $150 electric bill that's due tomorrow.",
         "I made this decision because: (1) Your account has sufficient funds, (2) The bill is due tomorrow and paying now avoids a $15 late fee, and (3) Your payment history shows you prefer to pay bills on time.",
-        "The payment will be processed from your checking account today. You'll receive a confirmation email once the payment is complete.",
+        "The payment will be processed from your checking account today.",
         "You can cancel this payment within 24 hours if you change your mind. After that, you can still contact customer service to request a refund if needed."
       ]
     }
@@ -114,7 +114,7 @@ const SCRIPTED_MESSAGES: Record<TaskType, Record<string, Record<string, string[]
       high: [
         "I've analyzed your savings goals and transferred $500 from your checking account to your emergency fund savings.",
         "I made this decision because: (1) You're making steady progress toward your $10,000 goal (now at $7,000), (2) Your checking account had sufficient funds ($2,430), and (3) Regular contributions help build financial security without impacting your monthly expenses.",
-        "Your emergency fund now has $7,000, and your checking account has $1,930 remaining. You'll receive a confirmation email once the transfer is complete.",
+        "Your emergency fund now has $7,000, and your checking account has $1,930 remaining.",
         "You can cancel this transfer within 24 hours if you change your mind. After that, you can still contact customer service to request a reversal if needed."
       ]
     }
@@ -160,7 +160,7 @@ const SCRIPTED_MESSAGES: Record<TaskType, Record<string, Record<string, string[]
       high: [
         "I've analyzed your portfolio and rebalanced it to your target allocation of 60% stocks and 40% bonds.",
         "I made this decision because: (1) Your portfolio had drifted 15% from your target (75/25 vs 60/40), (2) Rebalancing helps manage risk as you approach retirement, and (3) Your target allocation aligns with your risk tolerance and retirement timeline.",
-        "The rebalancing has been executed: $27,000 in stocks were sold and $27,000 in bonds were purchased. Your portfolio is now worth $180,000 with the target 60/40 allocation. You'll receive a confirmation email once the trades are complete.",
+        "The rebalancing has been executed: $27,000 in stocks were sold and $27,000 in bonds were purchased. Your portfolio is now worth $180,000 with the target 60/40 allocation.",
         "You can cancel this rebalancing within 24 hours if you change your mind. After that, you can still contact customer service to request a reversal if needed."
       ]
     }
@@ -249,8 +249,8 @@ const COUNTERBALANCE_GROUPS: Record<number, TaskCondition[]> = {
     { taskNumber: 2, taskType: 'savings', autonomy: 'high', explanation: 'high' },
     { taskNumber: 3, taskType: 'bill', autonomy: 'medium', explanation: 'low' },
     { taskNumber: 4, taskType: 'investment', autonomy: 'medium', explanation: 'high' },
-    { taskNumber: 5, taskType: 'bill', autonomy: 'low', explanation: 'high' },
-    { taskNumber: 6, taskType: 'savings', autonomy: 'medium', explanation: 'low' }
+    { taskNumber: 5, taskType: 'bill', autonomy: 'high', explanation: 'low' },
+    { taskNumber: 6, taskType: 'savings', autonomy: 'low', explanation: 'high' }
   ]
 }
 
@@ -583,11 +583,7 @@ export default function ChatInterface({ participantId, group }: ChatInterfacePro
 
   const handleExportData = () => {
     if (studyDataManagerRef.current) {
-      // Export both CSVs
-      studyDataManagerRef.current.downloadBaselineCSV()
-      setTimeout(() => {
-        studyDataManagerRef.current?.downloadTrialsCSV()
-      }, 500)
+      studyDataManagerRef.current.downloadTrialsCSV()
     }
   }
 
@@ -595,8 +591,17 @@ export default function ChatInterface({ participantId, group }: ChatInterfacePro
     if (!input.trim() || taskState === 'completed') return
 
     const rawInput = input.trim()
-    const match = matchIntent(rawInput)
+    // Match intent with context awareness
+    const match = matchIntent(rawInput, currentTaskType, autonomyLevel)
     const latency = decisionStartTime ? Date.now() - decisionStartTime : 0
+
+    // Validate that the matched intent is valid for current scenario
+    const isValidIntent = match.intent === 'unclear' || 
+                          match.intent === 'question' || 
+                          match.intent === 'off_topic' ||
+                          (autonomyLevel === 'low' && ['option1', 'option2', 'option3', 'confirm_yes', 'confirm_no'].includes(match.intent)) ||
+                          (autonomyLevel === 'medium' && ['confirm_yes', 'confirm_no'].includes(match.intent)) ||
+                          (autonomyLevel === 'high' && ['confirm_yes', 'confirm_no'].includes(match.intent))
 
     // Add user message to chat
     setMessages(prev => [...prev, {
@@ -618,11 +623,25 @@ export default function ChatInterface({ participantId, group }: ChatInterfacePro
       rawInput: rawInput,
       interpretedIntent: match.intent,
       confidenceScore: match.confidence,
-      clarificationNeeded: match.intent === 'unclear' || match.intent === 'question' || match.intent === 'off_topic',
+      clarificationNeeded: !isValidIntent || match.intent === 'unclear' || match.intent === 'question' || match.intent === 'off_topic',
       clarificationAttempts: clarificationAttempts,
     })
 
-    // Handle different intents based on autonomy level
+    // If intent is invalid for current scenario, treat as unclear
+    if (!isValidIntent || match.intent === 'unclear' || match.intent === 'question' || match.intent === 'off_topic') {
+      const clarificationMsg = getClarificationMessage(autonomyLevel, match.intent, currentTaskType)
+      setMessages(prev => [...prev, {
+        id: `msg-clarification-${Date.now()}`,
+        role: 'assistant',
+        content: clarificationMsg,
+        timestamp: new Date(),
+      }])
+      setClarificationAttempts(prev => prev + 1)
+      setTextInput('')
+      return
+    }
+
+    // Handle different intents based on autonomy level - only if valid
     if (autonomyLevel === 'low') {
       if (match.intent === 'option1') {
         handleOptionClick('option1')
@@ -669,18 +688,16 @@ export default function ChatInterface({ participantId, group }: ChatInterfacePro
       }
     }
 
-    // Handle unclear/question/off-topic intents
-    if (match.intent === 'unclear' || match.intent === 'question' || match.intent === 'off_topic') {
-      const clarificationMsg = getClarificationMessage(autonomyLevel, match.intent)
-      setMessages(prev => [...prev, {
-        id: `msg-clarification-${Date.now()}`,
-        role: 'assistant',
-        content: clarificationMsg,
-        timestamp: new Date(),
-      }])
-      setClarificationAttempts(prev => prev + 1)
-      setTextInput('')
-    }
+    // If we get here, the intent was matched but not handled - treat as unclear
+    const clarificationMsg = getClarificationMessage(autonomyLevel, 'unclear', currentTaskType)
+    setMessages(prev => [...prev, {
+      id: `msg-clarification-${Date.now()}`,
+      role: 'assistant',
+      content: clarificationMsg,
+      timestamp: new Date(),
+    }])
+    setClarificationAttempts(prev => prev + 1)
+    setTextInput('')
   }
 
   const handleInputSubmit = (e: React.FormEvent) => {
