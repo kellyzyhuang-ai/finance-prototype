@@ -58,6 +58,7 @@ export default function TaskTransition({
           <p>
             Please complete the post-task survey for Task {completedTaskNumber}.
           </p>
+          <p className="survey-link-label">Use the button below to open the survey in a new tab:</p>
         </div>
 
         <a
@@ -66,8 +67,9 @@ export default function TaskTransition({
           rel="noopener noreferrer"
           className="survey-link-button"
         >
-          Open Survey
+          Open Task {completedTaskNumber} Survey
         </a>
+        <p className="survey-url-hint">{surveyUrl}</p>
 
         <div className="survey-checkbox-wrap">
           <label className="survey-checkbox-label">

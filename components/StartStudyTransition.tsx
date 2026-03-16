@@ -21,7 +21,10 @@ export default function StartStudyTransition({ onComplete }: StartStudyTransitio
           <br />
           • There are no wrong answers
           <br />
-          • Fill out the digital survey after each task
+          • After each task you will see a screen with a link to that task&apos;s survey — open it, complete the survey, then continue
+        </p>
+        <p className="survey-note">
+          Each of the 6 tasks has its own short survey. The survey link will appear on the transition screen after you finish each task.
         </p>
         
         <button 
