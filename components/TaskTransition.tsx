@@ -1,6 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+
+const SURVEY_LINKS: Record<number, string> = {
+  1: 'https://uwaterloo.ca1.qualtrics.com/jfe/form/SV_9mdY76SzzpnrQW2',
+  2: 'https://uwaterloo.ca1.qualtrics.com/jfe/form/SV_3aPbnPppEM6Pnca',
+  3: 'https://uwaterloo.ca1.qualtrics.com/jfe/form/SV_eL5KZbOVw1UmWuW',
+  4: 'https://uwaterloo.ca1.qualtrics.com/jfe/form/SV_bfHJKxa7wUnaoU6',
+  5: 'https://uwaterloo.ca1.qualtrics.com/jfe/form/SV_55TioGJX6yYeWUe',
+  6: 'https://uwaterloo.ca1.qualtrics.com/jfe/form/SV_5w2QRBGClBJKV70'
+}
 
 interface TaskTransitionProps {
   completedTaskNumber: number
@@ -17,6 +26,9 @@ export default function TaskTransition({
 }: TaskTransitionProps) {
   const isFinalTask = completedTaskNumber >= totalTasks
   const [isExiting, setIsExiting] = useState(false)
+  const [surveyCompleted, setSurveyCompleted] = useState(false)
+
+  const surveyUrl = SURVEY_LINKS[completedTaskNumber] ?? '#'
 
   const handleStartNext = () => {
     setIsExiting(true)
@@ -34,37 +46,66 @@ export default function TaskTransition({
             <path className="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
           </svg>
         </div>
-        
+
         <h1 className="task-complete-title">
           {isFinalTask ? 'All Tasks Complete!' : `Task ${completedTaskNumber} Complete`}
         </h1>
-        
+
         <div className="survey-instructions">
+          {isFinalTask && (
+            <p className="thank-you-line">Thank you for completing all 6 tasks.</p>
+          )}
           <p>
-            {isFinalTask 
-              ? 'Thank you for completing all 6 tasks.\n\nPlease fill out the digital survey.'
-              : 'Please fill out the digital survey.'}
+            Please complete the post-task survey for Task {completedTaskNumber}.
           </p>
         </div>
-        
+
+        <a
+          href={surveyUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="survey-link-button"
+        >
+          Open Survey
+        </a>
+
+        <div className="survey-checkbox-wrap">
+          <label className="survey-checkbox-label">
+            <input
+              type="checkbox"
+              checked={surveyCompleted}
+              onChange={(e) => setSurveyCompleted(e.target.checked)}
+              className="survey-checkbox"
+            />
+            <span>I have completed the survey</span>
+          </label>
+        </div>
+
+        <div className="ready-section">
+          <p>After completing the survey, check the box above and click:</p>
+        </div>
+      </div>
+
+      <div className="transition-footer">
         {!isFinalTask && (
-          <div className="ready-section">
-            <p>When you're ready to continue:</p>
-            <button className="start-next-button" onClick={handleStartNext}>
-              Start Task {nextTaskNumber} of {totalTasks}
-            </button>
-          </div>
+          <button
+            className="start-next-button"
+            onClick={handleStartNext}
+            disabled={!surveyCompleted}
+          >
+            Start Task {nextTaskNumber} of {totalTasks}
+          </button>
         )}
-        
         {isFinalTask && (
-          <div className="ready-section">
-            <button className="start-next-button" onClick={handleStartNext}>
-              Continue to Final Screen
-            </button>
-          </div>
+          <button
+            className="start-next-button"
+            onClick={handleStartNext}
+            disabled={!surveyCompleted}
+          >
+            Continue to Final Screen
+          </button>
         )}
       </div>
     </div>
   )
 }
-

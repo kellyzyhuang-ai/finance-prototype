@@ -167,6 +167,7 @@ html {
   bottom: 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 9999;
@@ -182,6 +183,64 @@ html {
   color: white;
   max-width: 600px;
   padding: 40px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.transition-footer {
+  width: 100%;
+  padding: 24px 40px 32px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.survey-instructions .thank-you-line {
+  margin-bottom: 0.5em;
+}
+
+.survey-link-button {
+  display: inline-block;
+  background: white;
+  color: #3b82f6;
+  border: none;
+  padding: 14px 32px;
+  font-size: 18px;
+  font-weight: bold;
+  border-radius: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-bottom: 28px;
+}
+
+.survey-link-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.survey-checkbox-wrap {
+  margin-bottom: 28px;
+}
+
+.survey-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  color: white;
+  cursor: pointer;
+  user-select: none;
+}
+
+.survey-checkbox {
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  accent-color: #3b82f6;
 }
 
 .checkmark-large {
@@ -248,9 +307,16 @@ html {
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.start-next-button:hover {
+.start-next-button:hover:not(:disabled) {
   transform: scale(1.05);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.start-next-button:disabled {
+  background: #9ca3af;
+  color: #e5e7eb;
+  cursor: not-allowed;
+  opacity: 0.85;
 }
 
 @keyframes fadeIn {
